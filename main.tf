@@ -112,11 +112,24 @@ resource "null_resource" "service-nomad-client-only" {
   }
 }
 
+locals {
+  command_downlod_nomad = <<EOT
+if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip ]; then \
+  mkdir -p ${path.root}/${path.module}/tmp/${var.nomad_version} \
+  && wget -q --show-progress -O ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip https://releases.hashicorp.com/nomad/${var.nomad_version}/nomad_${var.nomad_version}_linux_amd64.zip; \
+fi; \
+if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad ]; then \
+  unzip -o -q -d ${path.root}/${path.module}/tmp/${var.nomad_version} ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip; \
+fi \
+EOT
+}
+
 resource "null_resource" "nomad-install" {
   count = var.cleanup ? 0 : 1
 
   triggers = {
     on_version_change = var.nomad_version
+    policy_sha1 = sha1(local.command_downlod_nomad)
   }
 
   connection {
@@ -128,10 +141,7 @@ resource "null_resource" "nomad-install" {
   }
 
   provisioner "local-exec" {
-    command     = <<EOT
-      wget -O ${path.root}/nomad.zip https://releases.hashicorp.com/nomad/${var.nomad_version}/nomad_${var.nomad_version}_linux_amd64.zip \
-      && unzip -o -q -d ${path.root} ${path.root}/nomad.zip
-    EOT
+    command     = local.command_downlod_nomad
     interpreter = ["/bin/bash", "-c"]
   }
 
@@ -140,28 +150,35 @@ resource "null_resource" "nomad-install" {
       "mkdir -p /home/${var.ssh_user}/nomad-data/plugins",
       "mkdir -p /home/${var.ssh_user}/.config/nomad",
       "mkdir -p /home/${var.ssh_user}/.config/systemd/user",
-      "rm -f /home/${var.ssh_user}/bin/nomad"
+      "systemctl --user stop nomad || true",
+      "sleep 2"
     ]
   }
 
   provisioner "file" {
-    source      = "${path.root}/nomad"
+    source      = "${path.root}/${path.module}/tmp/${var.nomad_version}/nomad"
     destination = "/home/${var.ssh_user}/bin/nomad"
   }
 
   provisioner "remote-exec" {
     inline = [
       "chmod +x /home/${var.ssh_user}/bin/nomad",
-      "systemctl --user reload nomad || exit 0",
+      "systemctl --user start nomad || true",
       "sleep 5"
     ]
   }
+}
 
-  provisioner "local-exec" {
-    command     = <<EOT
-      rm -f ${path.root}/nomad.zip ${path.root}/nomad
-    EOT
-  }
+locals {
+  command_downlod_nomad_driver_podman = <<EOT
+if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip ]; then \
+  mkdir -p ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version} \
+  && wget -q --show-progress -O ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman_${var.nomad-driver-podman_version}_linux_amd64.zip; \
+fi; \
+if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
+  unzip -o -q -d ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version} ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip; \
+fi \
+EOT
 }
 
 resource "null_resource" "install-nomad-driver-podman" {
@@ -169,6 +186,7 @@ resource "null_resource" "install-nomad-driver-podman" {
 
   triggers = {
     on_version_change = var.nomad-driver-podman_version
+    policy_sha1 = sha1(local.command_downlod_nomad_driver_podman)
   }
 
   depends_on = [
@@ -184,36 +202,31 @@ resource "null_resource" "install-nomad-driver-podman" {
   }
 
   provisioner "local-exec" {
-    command     = <<EOT
-      wget -O ${path.root}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman_${var.nomad-driver-podman_version}_linux_amd64.zip \
-      && unzip -o -q -d ${path.root} ${path.root}/nomad-driver-podman.zip
-    EOT
+    command     = local.command_downlod_nomad_driver_podman
     interpreter = ["/bin/bash", "-c"]
   }
 
   provisioner "remote-exec" {
     inline = [
+      "systemctl --user stop nomad || exit 0",
+      "systemctl enable --now --user podman.socket",
+      "systemctl start --user podman.socket",
+      "sleep 2",
       "rm -f /home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman",
     ]
   }
 
   provisioner "file" {
-    source      = "${path.root}/nomad-driver-podman"
+    source      = "${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman"
     destination = "/home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman"
   }
 
   provisioner "remote-exec" {
     inline = [
       "chmod +x /home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman",
-      "systemctl --user reload nomad || exit 0",
+      "systemctl --user start nomad || true",
       "sleep 5"
     ]
-  }
-  
-  provisioner "local-exec" {
-    command     = <<EOT
-      rm -f ${path.root}/nomad-driver-podman.zip ${path.root}/nomad-driver-podman
-    EOT
   }
 }
 
@@ -230,6 +243,8 @@ resource "null_resource" "cleanup" {
   
   provisioner "remote-exec" {
     inline = [
+      "systemctl stop --user podman.socket",
+      "systemctl disable --now --user podman.socket",
       "systemctl --user stop nomad",
       "systemctl --user disable nomad",
       "rm -f /home/${var.ssh_user}/.config/nomad/server.hcl",
@@ -240,8 +255,4 @@ resource "null_resource" "cleanup" {
       "sleep 5"
     ]
   }
-}
-
-output "cleanup_count" {
-  value = length(null_resource.cleanup)
 }
