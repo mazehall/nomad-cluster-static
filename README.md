@@ -34,6 +34,9 @@ module "nomad-server" {
 }
 
 module "nomad-client01" {
+  depends_on = [
+    module.nomad-server
+  ]
   source = "./nomad-cluster-static"
   cleanup = false
   enable_server = false

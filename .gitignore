@@ -36,3 +36,5 @@ terraform.rc
 nomad*.zip
 nomadlogs.txt
 logs.txt
+
+tmp/
