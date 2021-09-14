@@ -62,9 +62,8 @@ resource "null_resource" "service-nomad-client-server" {
 
   provisioner "remote-exec" {
     inline = [
-      "systemctl --user enable nomad",
       "systemctl --user stop nomad",
-      "systemctl --user start nomad",
+      "systemctl --user enable --now nomad",
       "sleep 5"
     ]
   }
@@ -104,9 +103,8 @@ resource "null_resource" "service-nomad-client-only" {
 
   provisioner "remote-exec" {
     inline = [
-      "systemctl --user enable nomad",
       "systemctl --user stop nomad",
-      "systemctl --user start nomad",
+      "systemctl --user enable --now nomad",
       "sleep 5"
     ]
   }
@@ -114,12 +112,12 @@ resource "null_resource" "service-nomad-client-only" {
 
 locals {
   command_downlod_nomad = <<EOT
-if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip ]; then \
-  mkdir -p ${path.root}/${path.module}/tmp/${var.nomad_version} \
-  && wget -q --show-progress -O ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip https://releases.hashicorp.com/nomad/${var.nomad_version}/nomad_${var.nomad_version}_linux_amd64.zip; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad.zip ]; then \
+  mkdir -p ${path.root}/.terraform/tmp/nomad/${var.nomad_version} \
+  && wget -q -O ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad.zip https://releases.hashicorp.com/nomad/${var.nomad_version}/nomad_${var.nomad_version}_linux_amd64.zip; \
 fi; \
-if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad ]; then \
-  unzip -o -q -d ${path.root}/${path.module}/tmp/${var.nomad_version} ${path.root}/${path.module}/tmp/${var.nomad_version}/nomad.zip; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad ]; then \
+  unzip -o -q -d ${path.root}/.terraform/tmp/nomad/${var.nomad_version} ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad.zip; \
 fi \
 EOT
 }
@@ -156,7 +154,7 @@ resource "null_resource" "nomad-install" {
   }
 
   provisioner "file" {
-    source      = "${path.root}/${path.module}/tmp/${var.nomad_version}/nomad"
+    source      = "${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad"
     destination = "/home/${var.ssh_user}/bin/nomad"
   }
 
@@ -171,12 +169,12 @@ resource "null_resource" "nomad-install" {
 
 locals {
   command_downlod_nomad_driver_podman = <<EOT
-if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip ]; then \
-  mkdir -p ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version} \
-  && wget -q --show-progress -O ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman_${var.nomad-driver-podman_version}_linux_amd64.zip; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip ]; then \
+  mkdir -p ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} \
+  && wget -q -O ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/nomad-driver-podman/${var.nomad-driver-podman_version}_${var.nomad-driver-podman_version}_linux_amd64.zip; \
 fi; \
-if [ ! -f ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
-  unzip -o -q -d ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version} ${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman.zip; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
+  unzip -o -q -d ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip; \
 fi \
 EOT
 }
@@ -209,15 +207,14 @@ resource "null_resource" "install-nomad-driver-podman" {
   provisioner "remote-exec" {
     inline = [
       "systemctl --user stop nomad || exit 0",
-      "systemctl enable --now --user podman.socket",
-      "systemctl start --user podman.socket",
-      "sleep 2",
+      "systemctl --user enable --now podman.socket",
+      "sleep 4",
       "rm -f /home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman",
     ]
   }
 
   provisioner "file" {
-    source      = "${path.root}/${path.module}/tmp/${var.nomad-driver-podman_version}/nomad-driver-podman"
+    source      = "${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}"
     destination = "/home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman"
   }
 
@@ -243,10 +240,8 @@ resource "null_resource" "cleanup" {
   
   provisioner "remote-exec" {
     inline = [
-      "systemctl stop --user podman.socket",
-      "systemctl disable --now --user podman.socket",
-      "systemctl --user stop nomad",
-      "systemctl --user disable nomad",
+      "systemctl --user disable --now podman.socket",
+      "systemctl --user disable --now nomad",
       "rm -f /home/${var.ssh_user}/.config/nomad/server.hcl",
       "rm -f /home/${var.ssh_user}/.config/nomad/config.hcl",
       "rm -f /home/${var.ssh_user}/.config/systemd/user/nomad.service",
