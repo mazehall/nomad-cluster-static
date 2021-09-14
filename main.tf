@@ -174,7 +174,7 @@ locals {
   command_downlod_nomad_driver_podman = <<EOT
 if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip ]; then \
   mkdir -p ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} \
-  && wget -q -O ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/nomad-driver-podman/${var.nomad-driver-podman_version}_${var.nomad-driver-podman_version}_linux_amd64.zip \
+  && wget -q -O ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman_${var.nomad-driver-podman_version}_linux_amd64.zip \
   || rm -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman*; \
 fi; \
 if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
@@ -214,15 +214,16 @@ resource "null_resource" "install-nomad-driver-podman" {
 
   provisioner "remote-exec" {
     inline = [
-      "systemctl --user stop nomad || exit 0",
-      "systemctl --user enable --now podman.socket",
+      "systemctl --user stop nomad || true",
+      "systemctl --user enable --now podman.socket || true",
+      "rm -rf /home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman",
       "sleep 4",
-      "rm -f /home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman",
+      "echo jens",
     ]
   }
 
   provisioner "file" {
-    source      = "${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}"
+    source      = "${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman"
     destination = "/home/${var.ssh_user}/nomad-data/plugins/nomad-driver-podman"
   }
 
