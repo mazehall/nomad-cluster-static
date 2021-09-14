@@ -118,6 +118,9 @@ if [ ! -f ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad.zip ]; th
 fi; \
 if [ ! -f ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad ]; then \
   unzip -o -q -d ${path.root}/.terraform/tmp/nomad/${var.nomad_version} ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad.zip; \
+fi; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad/${var.nomad_version}/nomad ]; then \
+  echo "Something was going wrong. Try a replay" && exit 1; \
 fi \
 EOT
 }
@@ -171,10 +174,15 @@ locals {
   command_downlod_nomad_driver_podman = <<EOT
 if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip ]; then \
   mkdir -p ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} \
-  && wget -q -O ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/nomad-driver-podman/${var.nomad-driver-podman_version}_${var.nomad-driver-podman_version}_linux_amd64.zip; \
+  && wget -q -O ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip https://releases.hashicorp.com/nomad-driver-podman/nomad-driver-podman/${var.nomad-driver-podman_version}_${var.nomad-driver-podman_version}_linux_amd64.zip \
+  || rm -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman*; \
 fi; \
 if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
-  unzip -o -q -d ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip; \
+  unzip -o -q -d ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version} ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman.zip \
+  || rm -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman*; \
+fi; \
+if [ ! -f ${path.root}/.terraform/tmp/nomad-driver-podman/${var.nomad-driver-podman_version}/nomad-driver-podman ]; then \
+  echo "Something was going wrong. Try a replay" && exit 1; \
 fi \
 EOT
 }
