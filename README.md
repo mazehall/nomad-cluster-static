@@ -20,7 +20,7 @@ provider "nomad" {
 
 module "nomad-server" {
   source  = "mazehall/nomad-podman-rootless-static/ssh"
-  version = "1.0.1"
+  version = "1.0.2"
   cleanup = false
   enable_server = true
   ssh_ip = "127.0.0.1"
@@ -40,7 +40,7 @@ module "nomad-client-01" {
     module.nomad-server
   ]
   source  = "mazehall/nomad-podman-rootless-static/ssh"
-  version = "1.0.1"
+  version = "1.0.2"
   cleanup = false
   enable_server = false
   ssh_ip = "127.0.0.1"
