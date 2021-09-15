@@ -5,14 +5,20 @@ A terraform module to provision a rootless nomad cluster without consul. The cur
 ## Constraints
 
 - user with `~/bin` directory in PATH
-- user with `~/bin` directory in PATH
 - systemctl for service control
 
 ## Usage
 
-Create or use an existing terraform project and add the repo as a subdirectory.
+Import the module from registry:
 
-example main.tf:
+```
+source  = "mazehall/nomad-podman-rootless-static/ssh"
+version = "1.0.4"       # optionally point to a version
+```
+
+or include the core sources from github into a subfolder.
+
+Example main.tf with registry import:
 
 ```HCL
 provider "nomad" {
